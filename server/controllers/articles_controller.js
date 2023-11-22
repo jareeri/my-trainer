@@ -18,6 +18,7 @@ const { authenticate } = require("passport");
 //  all articles from the database
 exports.getAllArticles = async (req, res) => {
   try {
+    
     const query = "SELECT * FROM articles"; // Query to retrieve all articles
     const result = await db.query(query); // Assuming db.query is a method to query the database
 
@@ -35,7 +36,9 @@ exports.getAllArticles = async (req, res) => {
 // Create a new article
 exports.createArticle = async (req, res) => {
   try {
-    const { trainer_id, title, content } = req.body; // Assuming the request body contains title, content, and published_at date
+    const trainer_id = req.user.user.Id;
+    // console.log(userID);
+    const { title, content } = req.body; // Assuming the request body contains title, content, and published_at date
 
     const query = `
         INSERT INTO articles (trainer_id, title, content)
@@ -65,20 +68,22 @@ exports.updateArticle = async (req, res) => {
   try {
     const { title, content } = req.body;
     const { id } = req.params; // Assuming the ID of the article is provided in the request parameters
+    const trainer_id = req.user.user.Id;
+    // console.log(trainer_id);
 
     const query = `
         UPDATE articles
         SET title = $1, content = $2
-        WHERE id = $3
+        WHERE id = $3 and trainer_id = $4
         RETURNING *`;
 
-    const values = [title, content, id]; // Replace with the appropriate values
+    const values = [title, content, id, trainer_id]; // Replace with the appropriate values
 
     const result = await db.query(query, values); // Execute the query
 
     if (result && result.rows.length > 0) {
       res.status(200).json({
-        message: `Article ${id} updated successfully`,
+        message: `Article ${id} updated successfully for trainer id ${trainer_id} `,
         updatedArticle: result.rows[0],
       });
     } else {
@@ -94,14 +99,16 @@ exports.updateArticle = async (req, res) => {
 exports.softDeleteArticle = async (req, res) => {
   try {
     const { id } = req.params; // Assuming the ID of the article is provided in the request parameters
+    const trainer_id = req.user.user.Id;
+    // console.log(userID);
 
     const query = `
         UPDATE articles
         SET deleted = true
-        WHERE id = $1
+        WHERE id = $1 and trainer_id = $2
         RETURNING *`;
 
-    const values = [id];
+    const values = [id, trainer_id];
 
     const result = await db.query(query, values);
 
@@ -125,14 +132,16 @@ exports.softDeleteArticle = async (req, res) => {
 exports.restoreArticle = async (req, res) => {
   try {
     const { id } = req.params; // Assuming the ID of the article is provided in the request parameters
+    const trainer_id = req.user.user.Id;
+    // console.log(trainer_id);
 
     const query = `
         UPDATE articles
         SET deleted = false
-        WHERE id = $1
-        RETURNING *`;
+        WHERE id = $1 and trainer_id = $2
+        RETURNING *` ;
 
-    const values = [id];
+    const values = [id, trainer_id];
 
     const result = await db.query(query, values);
 

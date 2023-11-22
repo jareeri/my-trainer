@@ -34,7 +34,7 @@ exports.login = async (req, res) => {
 
     if (result.rows.length === 1) {
       const user = {
-        id: result.rows[0].user_id, // Include user ID in the payload
+        Id: result.rows[0].user_id, // Include user ID in the payload
         name: username, // Include other user information if needed
       };
 
@@ -45,7 +45,7 @@ exports.login = async (req, res) => {
 
       if (passwordMatch) {
         // Passwords match, user is authenticated
-        const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET);
+        const accessToken = jwt.sign({user}, process.env.ACCESS_TOKEN_SECRET);
         res.status(200).json({
           message: "Login successful",
           Id: result.rows[0].user_id,

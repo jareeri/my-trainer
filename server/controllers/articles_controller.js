@@ -15,11 +15,14 @@ app.use(bodyParser.json()); // Enable JSON request body parsing
 const bcrypt = require("bcrypt");
 const { authenticate } = require("passport");
 
+const firebaseMiddleware = require("../middleware/fierbasemiddleware");
+
+
 //  all articles from the database
 exports.getAllArticles = async (req, res) => {
   try {
     
-    const query = "SELECT * FROM articles"; // Query to retrieve all articles
+    const query = "SELECT * FROM articles inner join trainers on articles.trainer_id = trainers.trainer_id"; // Query to retrieve all articles
     const result = await db.query(query); // Assuming db.query is a method to query the database
 
     if (result && result.rows) {
@@ -33,29 +36,38 @@ exports.getAllArticles = async (req, res) => {
   }
 };
 
-// Create a new article
+// Create a new article with an image
 exports.createArticle = async (req, res) => {
   try {
     const trainer_id = req.user.user.Id;
-    // console.log(userID);
-    const { title, content } = req.body; // Assuming the request body contains title, content, and published_at date
+    const { title, content } = req.body;
+    const file = req.file;
+    console.log(trainer_id);
+    if (!file) {
+      return res.status(400).json({ error: "No image file provided" });
+    }
 
-    const query = `
-        INSERT INTO articles (trainer_id, title, content)
-        VALUES ($1, $2, $3)
+    const fileName = `${Date.now()}_${file.originalname}`;
+
+    try {
+      const imageUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+
+      const query = `
+        INSERT INTO articles (trainer_id, title, content, articles_image)
+        VALUES ($1, $2, $3, $4)
         RETURNING *`;
 
-    const values = [trainer_id, title, content]; // Replace with the appropriate values
+      const values = [trainer_id, title, content, imageUrl];
 
-    const result = await db.query(query, values); // Execute the query
+      const result = await db.query(query, values);
 
-    if (result && result.rows.length > 0) {
       res.status(201).json({
-        message: "Article created successfully",
+        message: "Article created successfully with image",
         article: result.rows[0],
       });
-    } else {
-      res.status(400).json({ error: "Article creation failed" });
+    } catch (error) {
+      console.error("Error uploading image to Firebase:", error);
+      res.status(500).json({ error: "Error creating article with image" });
     }
   } catch (error) {
     console.error(error);
@@ -63,37 +75,53 @@ exports.createArticle = async (req, res) => {
   }
 };
 
-// Update a specific article
+// Update a specific article with an image
 exports.updateArticle = async (req, res) => {
   try {
     const { title, content } = req.body;
-    const { id } = req.params; // Assuming the ID of the article is provided in the request parameters
+    const { id } = req.params;
     const trainer_id = req.user.user.Id;
-    // console.log(trainer_id);
+    const file = req.file;
 
-    const query = `
+    // Check if an image file is provided
+    if (!file) {
+      return res.status(400).json({ error: "No image file provided" });
+    }
+
+    const fileName = `${Date.now()}_${file.originalname}`;
+
+    try {
+      const imageUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+
+      const query = `
         UPDATE articles
-        SET title = $1, content = $2
-        WHERE id = $3 and trainer_id = $4
+        SET title = $1, content = $2, articles_image = $3
+        WHERE id = $4 AND trainer_id = $5
         RETURNING *`;
 
-    const values = [title, content, id, trainer_id]; // Replace with the appropriate values
+      const values = [title, content, imageUrl, id, trainer_id];
 
-    const result = await db.query(query, values); // Execute the query
+      const result = await db.query(query, values);
 
-    if (result && result.rows.length > 0) {
-      res.status(200).json({
-        message: `Article ${id} updated successfully for trainer id ${trainer_id} `,
-        updatedArticle: result.rows[0],
-      });
-    } else {
-      res.status(404).json({ error: "Article not found or update failed" });
+      if (result && result.rows.length > 0) {
+        res.status(200).json({
+          message: `Article ${id} updated successfully with image`,
+          updatedArticle: result.rows[0],
+        });
+      } else {
+        res.status(404).json({ error: "Article not found or update failed" });
+      }
+    } catch (error) {
+      console.error("Error uploading image to Firebase:", error);
+      res.status(500).json({ error: "Error updating article with image" });
     }
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+
 
 // Soft delete a specific article
 exports.softDeleteArticle = async (req, res) => {
@@ -160,3 +188,66 @@ exports.restoreArticle = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+
+// // Create a new article
+// exports.createArticle = async (req, res) => {
+//   try {
+//     const trainer_id = req.user.user.Id;
+//     // console.log(userID);
+//     const { title, content } = req.body; // Assuming the request body contains title, content, and published_at date
+
+//     const query = `
+//         INSERT INTO articles (trainer_id, title, content)
+//         VALUES ($1, $2, $3)
+//         RETURNING *`;
+
+//     const values = [trainer_id, title, content]; // Replace with the appropriate values
+
+//     const result = await db.query(query, values); // Execute the query
+
+//     if (result && result.rows.length > 0) {
+//       res.status(201).json({
+//         message: "Article created successfully",
+//         article: result.rows[0],
+//       });
+//     } else {
+//       res.status(400).json({ error: "Article creation failed" });
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
+
+// // Update a specific article
+// exports.updateArticle = async (req, res) => {
+//   try {
+//     const { title, content } = req.body;
+//     const { id } = req.params; // Assuming the ID of the article is provided in the request parameters
+//     const trainer_id = req.user.user.Id;
+//     // console.log(trainer_id);
+
+//     const query = `
+//         UPDATE articles
+//         SET title = $1, content = $2
+//         WHERE id = $3 and trainer_id = $4
+//         RETURNING *`;
+
+//     const values = [title, content, id, trainer_id]; // Replace with the appropriate values
+
+//     const result = await db.query(query, values); // Execute the query
+
+//     if (result && result.rows.length > 0) {
+//       res.status(200).json({
+//         message: `Article ${id} updated successfully for trainer id ${trainer_id} `,
+//         updatedArticle: result.rows[0],
+//       });
+//     } else {
+//       res.status(404).json({ error: "Article not found or update failed" });
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };

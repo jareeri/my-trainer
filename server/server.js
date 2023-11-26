@@ -28,6 +28,7 @@ const trainer_router = require("./routes/trainer_routes");
 const plans_router = require("./routes/plans_routes");
 const review_routes = require("./routes/review_routes")
 const cartRoutes = require('./routes/cartRoutes');
+const exerciseRoutes = require('./routes/exerciseImagesRoutes');
 
 const server = http.createServer(app);
 const io = socketIo(server);
@@ -38,6 +39,7 @@ app.use(trainer_router);
 app.use(plans_router);
 app.use(review_routes);
 app.use('/api', cartRoutes);
+app.use(exerciseRoutes);
 
 app.get("/", async (req, res) => {
   try {

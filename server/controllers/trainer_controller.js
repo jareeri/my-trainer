@@ -53,25 +53,39 @@ exports.upgradeusertotrainer = async (req, res) => {
   
   // Retrieve all trainers
 exports.getAllTrainers = async (req, res) => {
-    try {
-      const query = `SELECT * FROM trainers inner join users on users.user_id = trainers.user_id`;
-      const result = await db.query(query);
-  
-      if (result && result.rows.length > 0) {
-        res.status(200).json({ trainers: result.rows });
-      } else {
-        res.status(404).json({ message: 'No trainers found' });
-      }
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Internal Server Error' });
+  try {
+    const query = `
+      SELECT
+        trainers.*,
+        users.*,
+        AVG(trainer_reviews.rating) AS avg_rating
+      FROM
+        trainers
+      INNER JOIN
+        users ON users.user_id = trainers.user_id
+      LEFT JOIN
+        trainer_reviews ON trainers.trainer_id = trainer_reviews.trainer_id
+      GROUP BY
+        trainers.trainer_id, users.user_id
+    `;
+
+    const result = await db.query(query);
+
+    if (result && result.rows.length > 0) {
+      res.status(200).json({ trainers: result.rows });
+    } else {
+      res.status(404).json({ message: 'No trainers found' });
     }
-  };
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
 
   // Update a specific trainer
 exports.updateTrainer = async (req, res) => {
     try {
-      const trainerId = req.params.trainer_id;
+      const trainerId = req.user.user.Id;
       const { certification, experience } = req.body;
   
       if (!trainerId) {
@@ -81,7 +95,7 @@ exports.updateTrainer = async (req, res) => {
       const query = `
         UPDATE trainers
         SET certification = $1, experience = $2
-        WHERE trainer_id = $3`;
+        WHERE user_id = $3`;
   
       const values = [certification, experience, trainerId];
   

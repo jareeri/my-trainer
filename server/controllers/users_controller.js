@@ -15,27 +15,34 @@ app.use(bodyParser.json()); // Enable JSON request body parsing
 const bcrypt = require("bcrypt");
 const { authenticate } = require("passport");
 
+const multer = require("multer");
+const path = require("path");
+const firebaseMiddleware = require("../middleware/fierbasemiddleware");
+const bucket = require("../middleware/fierbasemiddleware");
+
 // login endpoint
 exports.login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { usernameOrEmail, password } = req.body;
     // Validate request data
-    if (!username || !password) {
+    if (!usernameOrEmail || !password) {
       return res
         .status(400)
         .json({ message: "Username and password are required." });
     }
 
-    // Query the database to retrieve the hashed password for the provided username
-    const query = "SELECT user_id, password FROM Users WHERE username = $1";
-    const values = [username];
+    // Query the database to retrieve the hashed password for the provided usernameOrEmail
+    const query =
+      "SELECT user_id, password, userrole FROM Users WHERE username = $1 Or email = $1";
+    const values = [usernameOrEmail];
 
     const result = await db.query(query, values);
 
     if (result.rows.length === 1) {
       const user = {
         Id: result.rows[0].user_id, // Include user ID in the payload
-        name: username, // Include other user information if needed
+        name: usernameOrEmail, // Include other user information if needed
+        userRole: result.rows[0].userrole,
       };
 
       const hashedPassword = result.rows[0].password;
@@ -45,10 +52,11 @@ exports.login = async (req, res) => {
 
       if (passwordMatch) {
         // Passwords match, user is authenticated
-        const accessToken = jwt.sign({user}, process.env.ACCESS_TOKEN_SECRET);
+        const accessToken = jwt.sign({ user }, process.env.ACCESS_TOKEN_SECRET);
         res.status(200).json({
           message: "Login successful",
           Id: result.rows[0].user_id,
+          userRole: result.rows[0].userrole,
           accessToken: accessToken,
         });
       } else {
@@ -102,12 +110,10 @@ exports.register = async (req, res) => {
 
     const result = await db.query(query, values);
 
-    res
-      .status(201)
-      .json({
-        message: "User registered successfully",
-        Id: result.rows[0].user_id,
-      });
+    res.status(201).json({
+      message: "User registered successfully",
+      Id: result.rows[0].user_id,
+    });
   } catch (error) {
     // Insert the user data into the database.
     console.error(error);
@@ -232,18 +238,18 @@ exports.restoreUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   try {
-    const userId = req.params.userId; // Assuming the user ID is in the URL parameter
-    const { userrole, username, password } = req.body; // Get updated user information from request body
+    const userId = req.user.user.Id; // Assuming the user ID is in the URL parameter
+    const { username, password } = req.body; // Get updated user information from request body
 
     // Hash the updated password before updating it in the database
     const hashedPassword = await bcrypt.hash(password, 10); // Hash the password with 10 salt rounds
 
     const query = `
       UPDATE users
-      SET userrole = $1, username = $2, password = $3
-      WHERE user_id = $4`;
+      SET  username = $1, password = $2
+      WHERE user_id = $3`;
 
-    const values = [userrole, username, hashedPassword, userId];
+    const values = [username, hashedPassword, userId];
 
     await db.query(query, values);
 
@@ -252,5 +258,169 @@ exports.updateUser = async (req, res) => {
       .json({ message: `User with ID ${userId} has been updated` });
   } catch (error) {
     res.status(500).json({ error: "Error updating user" });
+  }
+};
+
+exports.createUserProfile = async (req, res) => {
+  try {
+    const userId = req.user.user.Id; // Assuming the user ID is in the URL parameter
+    const { bio, location, website } = req.body;
+    const file = req.file;
+
+    // Check if a profile already exists for the user
+    const existingProfileQuery = `
+      SELECT * FROM profile_user WHERE user_id = $1`;
+
+    const existingProfileValues = [userId];
+
+    const existingProfileResult = await db.query(existingProfileQuery, existingProfileValues);
+
+    if (existingProfileResult.rows.length > 0) {
+      // If a profile already exists, update it instead of creating a new one
+      const existingProfile = existingProfileResult.rows[0];
+
+      const fileName = `${Date.now()}_${file.originalname}`;
+
+      try {
+        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+
+        const updateQuery = `
+          UPDATE profile_user
+          SET bio = $1, location = $2, website = $3, profileimage = $4
+          WHERE user_id = $5
+          RETURNING *`;
+
+        const updateValues = [bio, location, website, fileUrl, userId];
+
+        const updatedProfileResult = await db.query(updateQuery, updateValues);
+
+        res.status(200).json({
+          message: "User updated his profile",
+          userprofile: updatedProfileResult.rows[0],
+        });
+      } catch (error) {
+        console.error("Error uploading file to Firebase:", error);
+        res.status(500).json({ error: "Error updating user profile" });
+      }
+    } else {
+      // If no profile exists, create a new one
+      const fileName = `${Date.now()}_${file.originalname}`;
+
+      try {
+        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+
+        const insertQuery = `
+          INSERT INTO profile_user
+          (bio, location, website, profileimage, user_id)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *`;
+
+        const insertValues = [bio, location, website, fileUrl, userId];
+
+        const result = await db.query(insertQuery, insertValues);
+
+        res.status(201).json({
+          message: "User created his profile",
+          userprofile: result.rows[0],
+        });
+      } catch (error) {
+        console.error("Error uploading file to Firebase:", error);
+        res.status(500).json({ error: "Error updating user profile" });
+      }
+    }
+  } catch (error) {
+    console.error("Error in createUserProfile:", error);
+    res.status(500).json({ error: "Error updating user profile" });
+  }
+};
+
+
+// exports.updateUserProfile = async (req, res) => {
+//   try {
+//     const userId = req.user.user.Id;
+//     const { bio, location, website, profileimage } = req.body;
+
+//     let updatedImageUrl;
+
+//     if (profileimage) {
+//       const fileName = `${Date.now()}_${req.file.originalname}`;
+
+//       try {
+//         updatedImageUrl = await firebaseMiddleware.uploadFileToFirebase(
+//           req.file,
+//           fileName
+//         );
+
+//         // Use a transaction to ensure atomicity of updates
+//         await db.query("BEGIN");
+
+//         // Update the profile image URL in the database
+//         const updateImageQuery = `
+//           UPDATE profile_user
+//           SET profileimage = $1
+//           WHERE user_id = $2`;
+
+//         const updateImageValues = [updatedImageUrl, userId];
+//         await db.query(updateImageQuery, updateImageValues);
+
+//         console.log("Update Image Query:", updateImageQuery);
+//         console.log("Update Image Values:", updateImageValues);
+
+//         await db.query("COMMIT");
+//       } catch (error) {
+//         console.error("Error uploading file to Firebase:", error);
+//         await db.query("ROLLBACK");
+//         return res.status(500).json({ error: "Error updating user image" });
+//       }
+//     }
+
+//     // Update other user profile information in the database
+//     const updateQuery = `
+//       UPDATE profile_user
+//       SET bio = $1, location = $2, website = $3
+//       WHERE user_id = $4`;
+
+//     const updateValues = [bio, location, website, userId];
+//     const result = await db.query(updateQuery, updateValues);
+
+//     res.status(200).json({
+//       message: `User with ID ${userId} has been updated`,
+//       updatedImageUrl: updatedImageUrl || null, // Include the updated image URL if available
+//       result: result.rows,
+//     });
+//   } catch (error) {
+//     console.error("Error in updateUserProfile:", error);
+//     res.status(500).json({ error: "Error updating user" });
+//   }
+// };
+
+// get your profile user 
+exports.getUserProfiles = async (req, res) => {
+  try {
+    const userId = req.user.user.Id; // Assuming the user ID is in the URL parameter
+
+    const query = `
+      SELECT users.user_id, users.username, users.email, users.userrole, users.created_at,  profile_user.bio, profile_user.location, profile_user.website, profile_user.profileimage
+      FROM users
+      INNER JOIN profile_user ON users.user_id = profile_user.user_id
+      WHERE users.user_id = $1`;
+
+    const values = [userId];
+
+    const result = await db.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User profile not found" });
+    }
+
+    const userProfile = result.rows[0];
+
+    res.status(200).json({
+      message: "User profile retrieved successfully",
+      userProfile: userProfile,
+    });
+  } catch (error) {
+    console.error("Error getting user profile:", error);
+    res.status(500).json({ error: "Error getting user profile" });
   }
 };

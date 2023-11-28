@@ -8,6 +8,8 @@ const upload = multer(); // Configure Multer for handling file uploads
 
 router.get("/getAllArticles", articlesController.getAllArticles);
 
+router.get('/getArticleById/:id', articlesController.getArticleById);
+
 // Create a new article with an image
 router.post("/createArticle", 
   verifyToken.authenticateToken, 

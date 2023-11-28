@@ -36,6 +36,31 @@ exports.getAllArticles = async (req, res) => {
   }
 };
 
+// Get a specific article by ID
+exports.getArticleById = async (req, res) => {
+  try {
+    const articleId = req.params.id; // Assuming the article ID is provided in the request parameters
+    
+    const query = `
+    SELECT * 
+    FROM articles 
+    INNER JOIN trainers ON articles.trainer_id = trainers.trainer_id
+    INNER JOIN users ON trainers.user_id = users.user_id
+    WHERE articles.id = $1;`;
+
+    const result = await db.query(query, [articleId]);
+
+    if (result && result.rows && result.rows.length > 0) {
+      res.status(200).json(result.rows[0]); // Respond with the retrieved article
+    } else {
+      res.status(404).json({ error: "Article not found" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error fetching article" });
+  }
+};
+
 // Create a new article with an image
 exports.createArticle = async (req, res) => {
   try {

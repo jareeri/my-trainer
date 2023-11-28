@@ -29,6 +29,8 @@ const plans_router = require("./routes/plans_routes");
 const review_routes = require("./routes/review_routes")
 const cartRoutes = require('./routes/cartRoutes');
 const exerciseRoutes = require('./routes/exerciseImagesRoutes');
+const faqroutes = require("./routes/faqroutes")
+const nutritionroutes = require("./routes/nutritionRoutes")
 
 const server = http.createServer(app);
 const io = socketIo(server);
@@ -40,7 +42,8 @@ app.use(plans_router);
 app.use(review_routes);
 app.use('/api', cartRoutes);
 app.use(exerciseRoutes);
-
+app.use(faqroutes);
+app.use(nutritionroutes);
 app.get("/", async (req, res) => {
   try {
     // await db.query(

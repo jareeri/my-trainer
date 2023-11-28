@@ -40,6 +40,7 @@ exports.login = async (req, res) => {
 
     if (result.rows.length === 1) {
       const user = {
+        trainerID:result.rows[0],
         Id: result.rows[0].user_id, // Include user ID in the payload
         name: usernameOrEmail, // Include other user information if needed
         userRole: result.rows[0].userrole,
@@ -125,7 +126,7 @@ exports.register = async (req, res) => {
 exports.profile = async (req, res) => {
   try {
     // Get the user's ID from the JWT payload
-    const userIdFromToken = req.user.id;
+    const userIdFromToken = req.user.user.Id;
 
     const userIdFromRequest = req.params.userId; // Assuming the user's ID is in the request parameters
 
@@ -422,5 +423,63 @@ exports.getUserProfiles = async (req, res) => {
   } catch (error) {
     console.error("Error getting user profile:", error);
     res.status(500).json({ error: "Error getting user profile" });
+  }
+};
+
+exports.updateUserProfileAndUser = async (req, res) => {
+  try {
+    const userId = req.user.user.Id;
+    const { bio, location, website, username } = req.body;
+    const file = req.file;
+
+    // Check if a file is provided in the request
+    if (!file) {
+      return res.status(400).json({ error: "No file provided" });
+    }
+
+    // Use a transaction to ensure atomicity of updates
+    await db.query('BEGIN');
+
+    try {
+      const fileName = `${Date.now()}_${file.originalname}`;
+      const fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+
+      // Update profile_user table
+      const updateProfileQuery = `
+        UPDATE profile_user
+        SET bio = $1, location = $2, website = $3, profileimage = $4
+        WHERE user_id = $5
+        RETURNING *`;
+
+      const updateProfileValues = [bio, location, website, fileUrl, userId];
+
+      const updatedProfileResult = await db.query(updateProfileQuery, updateProfileValues);
+
+      // Update users table
+      const updateUserQuery = `
+        UPDATE users
+        SET username = $1
+        WHERE user_id = $2`;
+
+      const updateUserValues = [username, userId];
+
+      await db.query(updateUserQuery, updateUserValues);
+
+      // Commit the transaction
+      await db.query('COMMIT');
+
+      res.status(200).json({
+        message: "User updated his profile and username",
+        userprofile: updatedProfileResult.rows[0],
+      });
+    } catch (error) {
+      // Rollback the transaction in case of an error
+      await db.query('ROLLBACK');
+      console.error("Error updating user profile and username:", error);
+      res.status(500).json({ error: "Error updating user profile and username" });
+    }
+  } catch (error) {
+    console.error("Error in updateUserProfileAndUser:", error);
+    res.status(500).json({ error: "Error updating user profile and username" });
   }
 };

@@ -59,15 +59,18 @@ exports.getAllTrainers = async (req, res) => {
       SELECT
         trainers.*,
         users.*,
+        profile_user.*,
         AVG(trainer_reviews.rating) AS avg_rating
       FROM
         trainers
       INNER JOIN
         users ON users.user_id = trainers.user_id
+      INNER JOIN
+        profile_user ON profile_user.user_id = trainers.user_id  
       LEFT JOIN
         trainer_reviews ON trainers.trainer_id = trainer_reviews.trainer_id
       GROUP BY
-        trainers.trainer_id, users.user_id
+        trainers.trainer_id, users.user_id, profile_user.id
     `;
 
     const result = await db.query(query);
@@ -121,7 +124,7 @@ exports.getTrainerById = async (req, res) => {
       FROM trainers
       INNER JOIN users ON users.user_id = trainers.user_id
       INNER JOIN profile_user ON profile_user.user_id = users.user_id
-      WHERE trainer_id = $1;
+      WHERE trainers.user_id = $1;
       `;
 
     const values = [trainerId];
@@ -139,16 +142,16 @@ exports.getTrainerById = async (req, res) => {
   }
 };
 
-
 // Update user profile and trainer information
 exports.updateUserProfileAndTrainer = async (req, res) => {
   try {
     const userId = req.user.user.Id;
-    const { bio, location, website, username, certification, experience } = req.body;
+    const { bio, location, website, username, certification, experience } =
+      req.body;
     const file = req.file;
 
     // Use a transaction to ensure atomicity of updates
-    await db.query('BEGIN');
+    await db.query("BEGIN");
 
     try {
       // Check if a profile exists for the user
@@ -157,14 +160,20 @@ exports.updateUserProfileAndTrainer = async (req, res) => {
 
       const existingProfileValues = [userId];
 
-      const existingProfileResult = await db.query(existingProfileQuery, existingProfileValues);
+      const existingProfileResult = await db.query(
+        existingProfileQuery,
+        existingProfileValues
+      );
 
       if (existingProfileResult.rows.length > 0) {
         // If a profile already exists, update it
         const existingProfile = existingProfileResult.rows[0];
 
         const fileName = `${Date.now()}_${file.originalname}`;
-        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(
+          file,
+          fileName
+        );
 
         const updateProfileQuery = `
           UPDATE profile_user
@@ -174,7 +183,10 @@ exports.updateUserProfileAndTrainer = async (req, res) => {
 
         const updateProfileValues = [bio, location, website, fileUrl, userId];
 
-        const updatedProfileResult = await db.query(updateProfileQuery, updateProfileValues);
+        const updatedProfileResult = await db.query(
+          updateProfileQuery,
+          updateProfileValues
+        );
 
         // Update users table
         const updateUserQuery = `
@@ -197,16 +209,20 @@ exports.updateUserProfileAndTrainer = async (req, res) => {
         await db.query(updateTrainerQuery, updateTrainerValues);
 
         // Commit the transaction
-        await db.query('COMMIT');
+        await db.query("COMMIT");
 
         res.status(200).json({
-          message: "User profile, username, and trainer information updated successfully",
+          message:
+            "User profile, username, and trainer information updated successfully",
           userprofile: updatedProfileResult.rows[0],
         });
       } else {
         // If no profile exists, create a new one
         const fileName = `${Date.now()}_${file.originalname}`;
-        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(
+          file,
+          fileName
+        );
 
         const insertProfileQuery = `
           INSERT INTO profile_user
@@ -216,7 +232,10 @@ exports.updateUserProfileAndTrainer = async (req, res) => {
 
         const insertProfileValues = [bio, location, website, fileUrl, userId];
 
-        const insertedProfileResult = await db.query(insertProfileQuery, insertProfileValues);
+        const insertedProfileResult = await db.query(
+          insertProfileQuery,
+          insertProfileValues
+        );
 
         // Update users table
         const updateUserQuery = `
@@ -239,22 +258,34 @@ exports.updateUserProfileAndTrainer = async (req, res) => {
         await db.query(updateTrainerQuery, updateTrainerValues);
 
         // Commit the transaction
-        await db.query('COMMIT');
+        await db.query("COMMIT");
 
         res.status(200).json({
-          message: "New user profile, username, and trainer information created successfully",
+          message:
+            "New user profile, username, and trainer information created successfully",
           userprofile: insertedProfileResult.rows[0],
         });
       }
     } catch (error) {
       // Rollback the transaction in case of an error
-      await db.query('ROLLBACK');
-      console.error("Error updating user profile, username, and trainer information:", error);
-      res.status(500).json({ error: "Error updating user profile, username, and trainer information" });
+      await db.query("ROLLBACK");
+      console.error(
+        "Error updating user profile, username, and trainer information:",
+        error
+      );
+      res
+        .status(500)
+        .json({
+          error:
+            "Error updating user profile, username, and trainer information",
+        });
     }
   } catch (error) {
     console.error("Error in updateUserProfileAndTrainer:", error);
-    res.status(500).json({ error: "Error updating user profile, username, and trainer information" });
+    res
+      .status(500)
+      .json({
+        error: "Error updating user profile, username, and trainer information",
+      });
   }
 };
-

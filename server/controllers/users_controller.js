@@ -40,7 +40,7 @@ exports.login = async (req, res) => {
 
     if (result.rows.length === 1) {
       const user = {
-        trainerID:result.rows[0],
+        // trainerID:result.rows[0],
         Id: result.rows[0].user_id, // Include user ID in the payload
         name: usernameOrEmail, // Include other user information if needed
         userRole: result.rows[0].userrole,

@@ -28,7 +28,7 @@ exports.getNutritionDataById = async (nutritionId) => {
 
 // Get Nutrition Data for a User by User ID
 exports.getNutritionDataForUser = async (userId) => {
-  const query = "SELECT * FROM nutrition_data WHERE user_id = $1";
+  const query = "SELECT * FROM nutrition_data WHERE user_id = $1 and deleted = false";
   const values = [parseInt(userId)];
 
   const result = await db.query(query, values);

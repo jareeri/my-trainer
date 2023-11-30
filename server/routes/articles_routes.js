@@ -10,6 +10,9 @@ router.get("/getAllArticles", articlesController.getAllArticles);
 
 router.get('/getArticleById/:id', articlesController.getArticleById);
 
+router.get('/articles/for-trainer/:trainerId', articlesController.getArticlesForTrainer);
+router.get('/articles/trainer', verifyToken.authenticateToken, articlesController.getTrainerArticles);
+
 // Create a new article with an image
 router.post("/createArticle", 
   verifyToken.authenticateToken, 

@@ -11,13 +11,12 @@ const app = express();
 app.use(express.json());
 
 const jwt = require("jsonwebtoken");
-// const jwtSecret = 'your-secret-key'; // Replace with a strong secret key
 const jwtOptions = {
   expiresIn: "7d", // Set the expiration time as needed
 };
 
-// app.use(cors()); // This enables CORS for all routes
-// app.use(bodyParser.json()); // Enable JSON request body parsing
+app.use(cors()); // This enables CORS for all routes
+app.use(bodyParser.json()); // Enable JSON request body parsing
 
 const bcrypt = require("bcrypt");
 const { authenticate } = require("passport");

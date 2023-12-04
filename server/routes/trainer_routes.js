@@ -16,6 +16,13 @@ router.put(
 );
 router.get("/getTrainerById/:trainer_id", trainerController.getTrainerById);
 // Update user profile, username, and trainer information
+
+router.get(
+  "/getTrainerByToken",
+  verifyToken.authenticateToken,
+  trainerController.getTrainerByToken
+);
+
 router.put(
   "/updateUserProfileAndTrainer",
   upload.single("image"),

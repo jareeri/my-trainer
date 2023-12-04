@@ -274,7 +274,10 @@ exports.createUserProfile = async (req, res) => {
 
     const existingProfileValues = [userId];
 
-    const existingProfileResult = await db.query(existingProfileQuery, existingProfileValues);
+    const existingProfileResult = await db.query(
+      existingProfileQuery,
+      existingProfileValues
+    );
 
     if (existingProfileResult.rows.length > 0) {
       // If a profile already exists, update it instead of creating a new one
@@ -283,7 +286,10 @@ exports.createUserProfile = async (req, res) => {
       const fileName = `${Date.now()}_${file.originalname}`;
 
       try {
-        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(
+          file,
+          fileName
+        );
 
         const updateQuery = `
           UPDATE profile_user
@@ -308,7 +314,10 @@ exports.createUserProfile = async (req, res) => {
       const fileName = `${Date.now()}_${file.originalname}`;
 
       try {
-        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(
+          file,
+          fileName
+        );
 
         const insertQuery = `
           INSERT INTO profile_user
@@ -334,7 +343,6 @@ exports.createUserProfile = async (req, res) => {
     res.status(500).json({ error: "Error updating user profile" });
   }
 };
-
 
 // exports.updateUserProfile = async (req, res) => {
 //   try {
@@ -395,7 +403,38 @@ exports.createUserProfile = async (req, res) => {
 //   }
 // };
 
-// get your profile user 
+// // get your profile user
+// exports.getUserProfiles = async (req, res) => {
+//   try {
+//     const userId = req.user.user.Id; // Assuming the user ID is in the URL parameter
+
+//     const query = `
+//       SELECT users.user_id, users.username, users.email, users.userrole, users.created_at,  profile_user.bio, profile_user.location, profile_user.website, profile_user.profileimage
+//       FROM users
+//       INNER JOIN profile_user ON users.user_id = profile_user.user_id
+//       WHERE users.user_id = $1`;
+
+//     const values = [userId];
+
+//     const result = await db.query(query, values);
+
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({ error: "User profile not found" });
+//     }
+
+//     const userProfile = result.rows[0];
+
+//     res.status(200).json({
+//       message: "User profile retrieved successfully",
+//       userProfile: userProfile,
+//     });
+//   } catch (error) {
+//     console.error("Error getting user profile:", error);
+//     res.status(500).json({ error: "Error getting user profile" });
+//   }
+// };
+
+// get your profile user
 exports.getUserProfiles = async (req, res) => {
   try {
     const userId = req.user.user.Id; // Assuming the user ID is in the URL parameter
@@ -403,7 +442,7 @@ exports.getUserProfiles = async (req, res) => {
     const query = `
       SELECT users.user_id, users.username, users.email, users.userrole, users.created_at,  profile_user.bio, profile_user.location, profile_user.website, profile_user.profileimage
       FROM users
-      INNER JOIN profile_user ON users.user_id = profile_user.user_id
+      LEFT JOIN profile_user ON users.user_id = profile_user.user_id
       WHERE users.user_id = $1`;
 
     const values = [userId];
@@ -411,7 +450,10 @@ exports.getUserProfiles = async (req, res) => {
     const result = await db.query(query, values);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "User profile not found" });
+      return res.status(200).json({
+        message: "User profile not found",
+        userProfile: null,
+      });
     }
 
     const userProfile = result.rows[0];
@@ -426,57 +468,192 @@ exports.getUserProfiles = async (req, res) => {
   }
 };
 
+
+// exports.updateUserProfileAndUser = async (req, res) => {
+//   try {
+//     const userId = req.user.user.Id;
+//     const { bio, location, website, username } = req.body;
+//     const file = req.file;
+
+//     // Use a transaction to ensure atomicity of updates
+//     await db.query("BEGIN");
+
+//     try {
+//       let fileUrl = null;
+
+//       // Check if a file is provided in the request
+//       if (file) {
+//         const fileName = `${Date.now()}_${file.originalname}`;
+//         fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+//       }
+
+//       // Update profile_user table
+//       const updateProfileQuery = `
+//         UPDATE profile_user
+//         SET bio = $1, location = $2, website = $3
+//         ${file ? ", profileimage = $4" : ""}
+//         WHERE user_id = $${file ? "5" : "4"}
+//         RETURNING *`;
+
+//       const updateProfileValues = [bio, location, website];
+//       if (file) {
+//         updateProfileValues.push(fileUrl);
+//       }
+//       updateProfileValues.push(userId);
+
+//       console.log("Update Profile Query:", updateProfileQuery);
+//       console.log("Update Profile Values:", updateProfileValues);
+
+//       const updatedProfileResult = await db.query(
+//         updateProfileQuery,
+//         updateProfileValues
+//       );
+
+//       // Update users table
+//       const updateUserQuery = `
+//         UPDATE users
+//         SET username = $1
+//         WHERE user_id = $2`;
+
+//       const updateUserValues = [username, userId];
+
+//       await db.query(updateUserQuery, updateUserValues);
+
+//       // Commit the transaction
+//       await db.query("COMMIT");
+
+//       res.status(200).json({
+//         message: "User updated his profile and username",
+//         userprofile: updatedProfileResult.rows[0],
+//       });
+//     } catch (error) {
+//       // Rollback the transaction in case of an error
+//       await db.query("ROLLBACK");
+//       console.error("Error updating user profile and username:", error);
+//       res
+//         .status(500)
+//         .json({ error: "Error updating user profile and username" });
+//     }
+//   } catch (error) {
+//     console.error("Error in updateUserProfileAndUser:", error);
+//     res.status(500).json({ error: "Error updating user profile and username" });
+//   }
+// };
+
 exports.updateUserProfileAndUser = async (req, res) => {
   try {
     const userId = req.user.user.Id;
     const { bio, location, website, username } = req.body;
     const file = req.file;
 
-    // Check if a file is provided in the request
-    if (!file) {
-      return res.status(400).json({ error: "No file provided" });
-    }
-
     // Use a transaction to ensure atomicity of updates
-    await db.query('BEGIN');
+    await db.query("BEGIN");
 
     try {
-      const fileName = `${Date.now()}_${file.originalname}`;
-      const fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+      let fileUrl = null;
 
-      // Update profile_user table
-      const updateProfileQuery = `
-        UPDATE profile_user
-        SET bio = $1, location = $2, website = $3, profileimage = $4
-        WHERE user_id = $5
-        RETURNING *`;
+      // Check if a file is provided in the request
+      if (file) {
+        const fileName = `${Date.now()}_${file.originalname}`;
+        fileUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+      }
 
-      const updateProfileValues = [bio, location, website, fileUrl, userId];
+      // Check if a profile exists for the user
+      const existingProfileQuery = `
+        SELECT * FROM profile_user WHERE user_id = $1`;
 
-      const updatedProfileResult = await db.query(updateProfileQuery, updateProfileValues);
+      const existingProfileValues = [userId];
 
-      // Update users table
-      const updateUserQuery = `
-        UPDATE users
-        SET username = $1
-        WHERE user_id = $2`;
+      const existingProfileResult = await db.query(
+        existingProfileQuery,
+        existingProfileValues
+      );
 
-      const updateUserValues = [username, userId];
+      if (existingProfileResult.rows.length > 0) {
+        // If a profile already exists, update it
+        const existingProfile = existingProfileResult.rows[0];
 
-      await db.query(updateUserQuery, updateUserValues);
+        const updateProfileQuery = `
+          UPDATE profile_user
+          SET bio = $1, location = $2, website = $3
+          ${file ? ", profileimage = $4" : ""}
+          WHERE user_id = $${file ? "5" : "4"}
+          RETURNING *`;
 
-      // Commit the transaction
-      await db.query('COMMIT');
+        const updateProfileValues = [bio, location, website];
+        if (file) {
+          updateProfileValues.push(fileUrl);
+        }
+        updateProfileValues.push(userId);
 
-      res.status(200).json({
-        message: "User updated his profile and username",
-        userprofile: updatedProfileResult.rows[0],
-      });
+        const updatedProfileResult = await db.query(
+          updateProfileQuery,
+          updateProfileValues
+        );
+
+        // Update users table
+        const updateUserQuery = `
+          UPDATE users
+          SET username = $1
+          WHERE user_id = $2`;
+
+        const updateUserValues = [username, userId];
+
+        await db.query(updateUserQuery, updateUserValues);
+
+        // Commit the transaction
+        await db.query("COMMIT");
+
+        res.status(200).json({
+          message: "User updated his profile and username",
+          userprofile: updatedProfileResult.rows[0],
+        });
+      } else {
+        // If no profile exists, create a new one
+        const fileName = `${Date.now()}_${file.originalname}`;
+        const fileUrl = await firebaseMiddleware.uploadFileToFirebase(
+          file,
+          fileName
+        );
+
+        const insertProfileQuery = `
+          INSERT INTO profile_user
+          (bio, location, website, profileimage, user_id)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *`;
+
+        const insertProfileValues = [bio, location, website, fileUrl, userId];
+
+        const insertedProfileResult = await db.query(
+          insertProfileQuery,
+          insertProfileValues
+        );
+
+        // Update users table
+        const updateUserQuery = `
+          UPDATE users
+          SET username = $1
+          WHERE user_id = $2`;
+
+        const updateUserValues = [username, userId];
+
+        await db.query(updateUserQuery, updateUserValues);
+
+        // Commit the transaction
+        await db.query("COMMIT");
+
+        res.status(200).json({
+          message: "New user profile and username created successfully",
+          userprofile: insertedProfileResult.rows[0],
+        });
+      }
     } catch (error) {
       // Rollback the transaction in case of an error
-      await db.query('ROLLBACK');
+      await db.query("ROLLBACK");
       console.error("Error updating user profile and username:", error);
-      res.status(500).json({ error: "Error updating user profile and username" });
+      res
+        .status(500)
+        .json({ error: "Error updating user profile and username" });
     }
   } catch (error) {
     console.error("Error in updateUserProfileAndUser:", error);

@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const db = require("./models/db");
+const sequelize = require('./models/sequelize'); // Adjust the path accordingly
 const bodyParser = require("body-parser"); // Import body-parser
 const cors = require("cors");
 const verifyToken = require("./middleware/authenticateToken");
@@ -10,6 +11,7 @@ const socketIo = require("socket.io");
 
 const app = express();
 app.use(express.json());
+const port = 8080;
 
 const jwt = require("jsonwebtoken");
 const jwtOptions = {
@@ -34,11 +36,15 @@ const nutritionroutes = require("./routes/nutritionRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const subscribersRoutes = require("./routes/subscribers_routes");
 const verifyRole = require("./routes/verifyRole_routes");
+const workoutRoutes = require('./routes/workoutRoutes'); 
+const joinOurTeamRoutes = require('./routes/joinOurTeamRoutes');
+
 const { log } = require("console");
 
 const server = http.createServer(app);
 const io = socketIo(server);
 
+// Routes
 app.use(user_router);
 app.use(articles_router);
 app.use(trainer_router);
@@ -51,6 +57,10 @@ app.use(nutritionroutes);
 app.use(paymentRoutes);
 app.use(subscribersRoutes);
 app.use(verifyRole);
+
+app.use('/workouts', workoutRoutes);
+app.use( joinOurTeamRoutes);
+
 
 app.get("/", async (req, res) => {
   try {
@@ -145,3 +155,19 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 app.listen(8080, () => {
   console.log("Server is running on port 8080");
 });
+
+// app.listen(port, async () => {
+//   try {
+//     // Connect to the database
+//     await sequelize.authenticate();
+//     console.log('Connection to the database has been established successfully.');
+
+//     // Sync models with the database
+//     await sequelize.sync();
+//     console.log('Models synchronized.');
+
+//     console.log(`Server is running on port ${port}`);
+//   } catch (error) {
+//     console.error('Unable to connect to the database:', error);
+//   }
+// });

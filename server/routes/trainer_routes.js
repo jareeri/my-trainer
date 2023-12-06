@@ -7,7 +7,7 @@ const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-router.post("/upgradeusertotrainer", trainerController.upgradeusertotrainer);
+router.post("/upgradeusertotrainer", verifyToken.authenticateToken, trainerController.upgradeUserToTrainer);
 router.get("/getAllTrainers", trainerController.getAllTrainers);
 router.put(
   "/updateTrainer/:trainer_id",

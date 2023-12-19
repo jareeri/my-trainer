@@ -7,6 +7,14 @@ const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+router.get(
+  "/plans",
+  verifyToken.authenticateToken,
+  plansController.getAllPlans
+);
+
+router.get("/plans/count", plansController.getCountOfAllPlans);
+
 router.post(
   "/createPlan",
   upload.single("image"),

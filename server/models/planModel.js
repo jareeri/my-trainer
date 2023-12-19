@@ -233,8 +233,26 @@ const PlanModel = {
       throw error;
     }
   },
+  // New static method to get the count of all plans
+  getCountOfAllPlans: async () => {
+    try {
+      const query = "SELECT COUNT(*) FROM plans";
+      const result = await db.query(query);
+      return result.rows[0].count;
+    } catch (error) {
+      throw error;
+    }
+  },
+  getAllPlans: async () => {
+    try {
+      const query = "SELECT * FROM plans";
+      const result = await db.query(query);
+      return result.rows;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
-
 
 // // Get plans by category
 // exports.getPlansByCategory = async (category) => {

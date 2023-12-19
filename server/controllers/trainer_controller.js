@@ -111,7 +111,7 @@ exports.getTrainerByToken = async (req, res) => {
   try {
     // Extract user ID from the token
     const userId = req.user.user.Id;
-
+    
     const query = `
       SELECT *
       FROM trainers
@@ -123,6 +123,7 @@ exports.getTrainerByToken = async (req, res) => {
     const values = [userId];
 
     const result = await db.query(query, values);
+    // console.log(result.rows);
 
     if (result.rows.length === 1) {
       res.status(200).json(result.rows[0]);

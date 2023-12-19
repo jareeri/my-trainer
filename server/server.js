@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const db = require("./models/db");
-const sequelize = require('./models/sequelize'); // Adjust the path accordingly
+// const sequelize = require('./models/sequelize'); // Adjust the path accordingly
 const bodyParser = require("body-parser"); // Import body-parser
 const cors = require("cors");
 const verifyToken = require("./middleware/authenticateToken");
@@ -38,6 +38,7 @@ const subscribersRoutes = require("./routes/subscribers_routes");
 const verifyRole = require("./routes/verifyRole_routes");
 const workoutRoutes = require('./routes/workoutRoutes'); 
 const joinOurTeamRoutes = require('./routes/joinOurTeamRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
 
 const { log } = require("console");
 
@@ -60,7 +61,7 @@ app.use(verifyRole);
 
 app.use('/workouts', workoutRoutes);
 app.use( joinOurTeamRoutes);
-
+app.use('/categories', categoryRoutes);
 
 app.get("/", async (req, res) => {
   try {

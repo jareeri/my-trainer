@@ -184,3 +184,27 @@ exports.getPlansByCategory = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+exports.getAllPlans = async (req, res) => {
+  try {
+    // Use the PlanModel function to retrieve all plans
+    const plans = await PlanModel.getAllPlans();
+
+    // Respond with the list of plans
+    return res.status(200).json({ plans });
+  } catch (error) {
+    console.error("Error getting plans:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// New controller method to get the count of all plans
+exports.getCountOfAllPlans = async (req, res) => {
+  try {
+    const count = await PlanModel.getCountOfAllPlans();
+    res.json({ count });
+  } catch (error) {
+    console.error("Error getting count of all plans:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};

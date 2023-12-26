@@ -37,7 +37,7 @@ exports.getNutritionDataForUser = async (userId) => {
 
 // Get Nutrition Data for a User by trainer_id ID
 exports.getNutritionDataForUserByTrainerId = async (trainerId, userId) => {
-    const query = "SELECT * FROM nutrition_data WHERE trainer_id = $1 and user_id = $2";
+    const query = "SELECT * FROM nutrition_data WHERE trainer_id = $1 and user_id = $2 and deleted = false";
     const values = [trainerId, userId];
   
     const result = await db.query(query, values);
@@ -61,7 +61,8 @@ exports.updateNutritionDataById = async (nutritionId, nutrient, amount, daily_va
 
 // Soft delete Nutrition Data by ID
 exports.softDeleteNutritionDataById = async (nutritionId, user_Id) => {
-  const checkQuery = 'SELECT deleted FROM nutrition_data WHERE id = $1 and user_id = $2';
+  console.log("aaa", nutritionId, user_Id);
+  const checkQuery = 'SELECT deleted FROM nutrition_data WHERE id = $1 and trainer_id = $2';
   const checkValues = [nutritionId, user_Id];
 
   const checkResult = await db.query(checkQuery, checkValues);

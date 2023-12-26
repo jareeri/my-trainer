@@ -8,6 +8,10 @@ const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+//google login
+router.post("/logins", userController.loginUsers);
+
+
 router.post("/login", userController.login);
 router.post("/register", userController.register);
 router.get(

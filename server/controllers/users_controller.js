@@ -19,6 +19,63 @@ const multer = require("multer");
 const path = require("path");
 const firebaseMiddleware = require("../middleware/fierbasemiddleware");
 const bucket = require("../middleware/fierbasemiddleware");
+const userModel = require("../models/usermodel");
+
+//google login
+exports.loginUsers = async (req, res) => {
+  try {
+    // console.log("object");
+    const username = req.body.name;
+    const { email } = req.body;
+    // console.log(email);
+
+    const existUser = await userModel.getUserByEmails(email);
+    // console.log(`hhh`, existUser);
+    console.log("142536", existUser);
+    if (existUser) {
+      try {
+        const user = {
+          name: existUser.username,
+          // email: existUser.email,
+          userRole: existUser.userrole,
+          Id: existUser.user_id,
+        };
+        const secretKey = process.env.ACCESS_TOKEN_SECRET;
+        const token = jwt.sign({ user }, secretKey, { expiresIn: "6h" });
+
+        return res.status(200).json({
+          userRole: existUser.userrole,
+          Id: existUser.user_id,
+          logmessage: "User logged in successfully",
+          token: token,
+        });
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Internal Server Error" });
+      }
+    } else {
+      const user1 = await userModel.createUsers({ username, email });
+      console.log(user1);
+      const user = {
+        // trainerID:result.rows[0],
+        name: user1.username,
+        userRole: user1.userrole,
+        Id: user1.user_id,
+      };
+      const secretKey = process.env.ACCESS_TOKEN_SECRET;
+      const token = jwt.sign({ user1 }, secretKey, { expiresIn: "6h" });
+
+      return res.status(200).json({
+        userRole: user1.userrole,
+        logmessage: "User added successfully",
+        token: token,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 
 // login endpoint
 exports.login = async (req, res) => {
@@ -41,7 +98,7 @@ exports.login = async (req, res) => {
     if (result.rows.length === 1) {
       const user = {
         // trainerID:result.rows[0],
-        Id: result.rows[0].user_id, // Include user ID in the payload
+        Id: result.rows[0].user_id, // Include user ID in the user
         name: usernameOrEmail, // Include other user information if needed
         userRole: result.rows[0].userrole,
       };
@@ -125,7 +182,7 @@ exports.register = async (req, res) => {
 // Profile endpoint
 exports.profile = async (req, res) => {
   try {
-    // Get the user's ID from the JWT payload
+    // Get the user's ID from the JWT user
     const userIdFromToken = req.user.user.Id;
 
     const userIdFromRequest = req.params.userId; // Assuming the user's ID is in the request parameters
@@ -158,7 +215,7 @@ exports.profile = async (req, res) => {
 exports.all_users = async (req, res) => {
   try {
     const result = await db.query(
-      "SELECT userrole, username, email, deleted  FROM users"
+      "SELECT user_id, userrole, username, email, deleted  FROM users where deleted = false"
     );
     res.json(result.rows);
   } catch (err) {
@@ -344,8 +401,6 @@ exports.createUserProfile = async (req, res) => {
   }
 };
 
-
-
 exports.getUserProfiles = async (req, res) => {
   try {
     const userId = req.user.user.Id; // Assuming the user ID is in the URL parameter
@@ -378,8 +433,6 @@ exports.getUserProfiles = async (req, res) => {
     res.status(500).json({ error: "Error getting user profile" });
   }
 };
-
-
 
 exports.updateUserProfileAndUser = async (req, res) => {
   try {

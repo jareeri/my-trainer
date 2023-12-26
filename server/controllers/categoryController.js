@@ -48,9 +48,10 @@ const createCategory = async (req, res) => {
 const updateCategory = async (req, res) => {
   const categoryId = req.params.id;
   const categoryData = req.body;
+  const file = req.file;
 
   try {
-    const updatedCategory = await categoryModel.updateCategory(categoryId, categoryData);
+    const updatedCategory = await categoryModel.updateCategory(categoryId, categoryData, file);
 
     if (updatedCategory) {
       res.status(200).json(updatedCategory);

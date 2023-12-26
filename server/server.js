@@ -39,7 +39,7 @@ const verifyRole = require("./routes/verifyRole_routes");
 const workoutRoutes = require('./routes/workoutRoutes'); 
 const joinOurTeamRoutes = require('./routes/joinOurTeamRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
-
+const contactUsRoutes = require('./routes/contactRoutes')
 const { log } = require("console");
 
 const server = http.createServer(app);
@@ -62,6 +62,8 @@ app.use(verifyRole);
 app.use('/workouts', workoutRoutes);
 app.use( joinOurTeamRoutes);
 app.use('/categories', categoryRoutes);
+app.use(contactUsRoutes);
+
 
 app.get("/", async (req, res) => {
   try {

@@ -30,15 +30,20 @@ const createCategory = async (category_name, file) => {
   return result.rows[0];
 };
 
-const updateCategory = async (categoryId, categoryData) => {
+const updateCategory = async (categoryId, categoryData, file) => {
   const { category_name, category_image_url } = categoryData;
   let query;
   let values;
-  // console.log(category_name);
-  if (category_image_url) {
+
+  if (file) {
+    // If category_image_url is provided, handle the file upload using Firebase middleware
+    const fileName = `${Date.now()}_${file.originalname}`;
+    const imgUrl = await firebaseMiddleware.uploadFileToFirebase(file, fileName);
+
     query = 'UPDATE categories SET category_name = $1, category_image_url = $2 WHERE category_id = $3 RETURNING *';
-    values = [category_name || null, category_image_url, categoryId];
+    values = [category_name || null, imgUrl, categoryId];
   } else {
+    // If category_image_url is not provided, only update the category_name
     query = 'UPDATE categories SET category_name = $1 WHERE category_id = $2 RETURNING *';
     values = [category_name || null, categoryId];
   }

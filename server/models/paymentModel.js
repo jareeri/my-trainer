@@ -22,6 +22,11 @@ class PaymentModel {
   }
 
   async addSubscriber(user_id, plan_id, subscribed_at, end_at, trainer_id) {
+    const checkQuery =
+        "SELECT trainer_id FROM trainers WHERE user_id = $1 ";
+      const checkValues = [trainer_id];
+      const checkResult = await db.query(checkQuery, checkValues);
+    // console.log(checkResult.rows[0].trainer_id);
     const addSubscriberQuery = `
       INSERT INTO subscribers (user_id, plan_id, subscribed_at, end_at, trainer_id)
       VALUES ($1, $2, $3, $4, $5)
@@ -32,7 +37,7 @@ class PaymentModel {
       plan_id,
       subscribed_at,
       end_at,
-      trainer_id,
+      checkResult.rows[0].trainer_id,
     ];
 
     try {

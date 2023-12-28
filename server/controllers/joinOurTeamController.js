@@ -7,7 +7,7 @@ exports.requestToJoinTeam = async (req, res) => {
   try {
     const user_id = req.user.user.Id; // Extract user_id from token
     const { whyJoin, experience, certificate } = req.body;
-
+    console.log(user_id);
     // Check if the user is already a trainer
     const checkIfTrainerQuery = "SELECT * FROM trainers WHERE user_id = $1";
     const checkIfTrainerValues = [user_id];
@@ -15,7 +15,7 @@ exports.requestToJoinTeam = async (req, res) => {
       checkIfTrainerQuery,
       checkIfTrainerValues
     );
-
+      console.log(checkIfTrainerResult.rows);
     if (checkIfTrainerResult.rows.length > 0) {
       return res.status(400).json({ message: "User is already a trainer" });
     }
@@ -49,6 +49,23 @@ exports.getJoinRequests = async (req, res) => {
 
     // Return the join requests
     res.status(200).json({ joinRequests: getAllRequestsResult.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// Method to delete a join request
+exports.deleteJoinRequest = async (req, res) => {
+  try {
+    const requestId = req.params.requestId;
+
+    // Delete the join request
+    const deleteRequestQuery = "DELETE FROM trainer_requests WHERE id = $1";
+    const deleteRequestValues = [requestId];
+    await db.query(deleteRequestQuery, deleteRequestValues);
+
+    res.status(200).json({ message: "Join request deleted successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal Server Error" });

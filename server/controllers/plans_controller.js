@@ -138,6 +138,18 @@ exports.softDeletePlanById = async (req, res) => {
   }
 };
 
+ exports.softDeletePlan = async (req, res) => {
+  const planId = req.params.planId;
+
+  const result = await PlanModel.softDeletePlanById(planId);
+
+  if (result.error) {
+    return res.status(400).json({ error: result.error });
+  }
+
+  return res.json({ message: result.message });
+};
+
 // Restore a soft-deleted plan by ID
 exports.restorePlanById = async (req, res) => {
   try {

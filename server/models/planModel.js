@@ -135,7 +135,7 @@ const PlanModel = {
 
   getPlansForTrainer: async (trainerId) => {
     try {
-      const query = "SELECT * FROM plans WHERE user_id = $1";
+      const query = "SELECT * FROM plans WHERE user_id = $1 and deleted=false";
       const values = [trainerId];
       const result = await db.query(query, values);
 
@@ -148,10 +148,11 @@ const PlanModel = {
   softDeletePlanById: async (planId, trainerId) => {
     try {
       const checkQuery =
-        "SELECT deleted FROM plans WHERE id = $1 AND user_id = $2";
+        `SELECT deleted FROM plans WHERE id = $1 AND user_id = $2`;
+      
       const checkValues = [planId, trainerId];
       const checkResult = await db.query(checkQuery, checkValues);
-
+          console.log(checkResult);
       if (checkResult.rows.length === 0) {
         throw new Error("Plan not found");
       }
@@ -245,13 +246,54 @@ const PlanModel = {
   },
   getAllPlans: async () => {
     try {
-      const query = "SELECT * FROM plans";
+      const query = "SELECT * FROM plans where deleted = false";
       const result = await db.query(query);
       return result.rows;
     } catch (error) {
       throw error;
     }
   },
+
+
+
+
+  softDeletePlanById: async (planId) => {
+    try {
+      const checkQuery = `
+        SELECT deleted FROM plans WHERE id = $1`;
+
+      const checkValues = [planId];
+      const checkResult = await db.query(checkQuery, checkValues);
+
+      if (checkResult.rows.length === 0) {
+        return { error: "Plan not found" };
+      }
+
+      if (checkResult.rows[0].deleted) {
+        return { error: "Plan is already soft-deleted" };
+      }
+
+      const updateQuery = `
+        UPDATE plans
+        SET deleted = true
+        WHERE id = $1`;
+
+      const values = [planId];
+
+      const result = await db.query(updateQuery, values);
+
+      if (result.rowCount > 0) {
+        return { message: `Plan with ID ${planId} has been soft-deleted by admin` };
+      } else {
+        return { error: "Failed to soft-delete the plan" };
+      }
+    } catch (error) {
+      // Log the error for debugging purposes
+      console.error(error);
+      return { error: "Internal Server Error" };
+    }
+  }
+  
 };
 
 // // Get plans by category

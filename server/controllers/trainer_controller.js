@@ -253,13 +253,35 @@ exports.upgradeUserToTrainer = async (req, res) => {
       userIdToUse = getUserIdResult.rows[0].user_id;
     }
 
-    const insertTrainerQuery = `
-        INSERT INTO trainers (user_id, certification, experience)
-        VALUES ($1, null, null)`;
+    // Check if there is no existing record in the trainers table for the user
+    const checkTrainerQuery = 'SELECT * FROM trainers WHERE user_id = $1';
+    const checkTrainerValues = [userIdToUse];
+    const checkTrainerResult = await db.query(checkTrainerQuery, checkTrainerValues);
 
-    const insertValues = [userIdToUse];
+    if (checkTrainerResult.rows.length === 0) {
+      // Insert a new row into the trainers table with user_id set to the upgraded user
+      const insertTrainerQuery = `
+          INSERT INTO trainers (user_id, certification, experience)
+          VALUES ($1, null, null)`;
 
-    await db.query(insertTrainerQuery, insertValues);
+      const insertTrainerValues = [userIdToUse];
+      await db.query(insertTrainerQuery, insertTrainerValues);
+    }
+
+    // Check if there is no existing record in the profile_user table for the user
+    const checkProfileQuery = 'SELECT * FROM profile_user WHERE user_id = $1';
+    const checkProfileValues = [userIdToUse];
+    const checkProfileResult = await db.query(checkProfileQuery, checkProfileValues);
+
+    if (checkProfileResult.rows.length === 0) {
+      // Insert a new row into the profile_user table with user_id set to the upgraded user
+      const insertProfileQuery = `
+          INSERT INTO profile_user (user_id, bio, location, website, profileimage)
+          VALUES ($1, null, null, null, null)`;
+
+      const insertProfileValues = [userIdToUse];
+      await db.query(insertProfileQuery, insertProfileValues);
+    }
 
     // Change the user's role to 'trainer' only if user_id or username is provided
     if (user_id || username) {
@@ -269,7 +291,6 @@ exports.upgradeUserToTrainer = async (req, res) => {
           WHERE user_id = $1`;
 
       const updateValues = [userIdToUse];
-
       await db.query(updateRoleQuery, updateValues);
     }
 
@@ -279,4 +300,59 @@ exports.upgradeUserToTrainer = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+
+
+// // Route to upgrade a user to a trainer
+// exports.upgradeUserToTrainer = async (req, res) => {
+//   try {
+//     const { user_id, username } = req.body;
+
+//     if (!(user_id || username)) {
+//       return res.status(400).json({ message: "Missing required fields" });
+//     }
+
+//     // Determine the user_id based on user_id or username
+//     let userIdToUse;
+//     if (user_id) {
+//       userIdToUse = user_id;
+//     } else {
+//       // Retrieve user_id based on username
+//       const getUserIdQuery = 'SELECT user_id FROM users WHERE username = $1';
+//       const getUserIdValues = [username];
+//       const getUserIdResult = await db.query(getUserIdQuery, getUserIdValues);
+
+//       if (getUserIdResult.rows.length === 0) {
+//         return res.status(404).json({ message: "User not found" });
+//       }
+
+//       userIdToUse = getUserIdResult.rows[0].user_id;
+//     }
+
+//     const insertTrainerQuery = `
+//         INSERT INTO trainers (user_id, certification, experience)
+//         VALUES ($1, null, null)`;
+
+//     const insertValues = [userIdToUse];
+
+//     await db.query(insertTrainerQuery, insertValues);
+
+//     // Change the user's role to 'trainer' only if user_id or username is provided
+//     if (user_id || username) {
+//       const updateRoleQuery = `
+//           UPDATE users
+//           SET userrole = 'trainer'
+//           WHERE user_id = $1`;
+
+//       const updateValues = [userIdToUse];
+
+//       await db.query(updateRoleQuery, updateValues);
+//     }
+
+//     res.status(201).json({ message: "User upgraded to a trainer successfully" });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
 

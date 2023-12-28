@@ -45,4 +45,8 @@ router.put(
 
 router.get("/plans/category/:category", plansController.getPlansByCategory);
 router.get("/plans/getAllCategories", plansController.getAllCategories);
+
+router.delete('/plans/:planId',  verifyToken.authenticateToken,
+plansController.softDeletePlan);
+
 module.exports = router;

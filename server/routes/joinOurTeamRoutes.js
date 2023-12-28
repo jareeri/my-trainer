@@ -10,4 +10,6 @@ router.post('/join-our-team', verifyToken.authenticateToken, joinOurTeamControll
 
 router.get('/join-requests', verifyToken.authenticateToken, joinOurTeamController.getJoinRequests);
 
+router.delete("/join-requests/:requestId", verifyToken.authenticateToken, joinOurTeamController.deleteJoinRequest);
+
 module.exports = router;
